@@ -1,28 +1,29 @@
-# backend/main.py
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+from typing import Dict, Any
+from backend.chatbot import chat_with_aura  # import from your chatbot file
 
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from backend.utils.foo import ask_chatbot
+app = FastAPI(title="Aura Health API")
 
-app = Flask(__name__)
-CORS(app)  # Allows React frontend to connect without CORS issues
+# Allow frontend requests (from your React dashboard)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.route("/chat", methods=["POST"])
-def chat():
-    """Receive a user message and return chatbot response."""
-    data = request.get_json()
-    user_query = data.get("message", "")
+class Message(BaseModel):
+    message: str
 
-    if not user_query:
-        return jsonify({"error": "No message provided"}), 400
+@app.post("/api/chat")
+def chat_endpoint(msg: Message) -> Dict[str, Any]:
+    """Send a message to Aura and get a response"""
+    response = chat_with_aura(msg.message)
+    return {"response": response}
 
-    try:
-        response = ask_chatbot(user_query)
-        return jsonify({"response": response})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-if __name__ == "__main__":
-    app.run(debug=True)
-
-
+@app.get("/")
+def root():
+    return {"status": "ok", "message": "Aura Health backend is running!"}
